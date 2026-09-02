@@ -1,0 +1,50 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+.env.*
+
+# Node
+node_modules/
+dist/
+
+# Machine Learning
+*.joblib
+*.pkl
+*.pickle
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Data
+data/raw/*
+data/processed/*
+data/external/*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
