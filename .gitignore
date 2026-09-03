@@ -15,19 +15,18 @@ __pycache__/
 node_modules/
 dist/
 
-# Machine Learning
-*.joblib
-*.pkl
-*.pickle
-*.pt
-*.pth
-*.bin
-*.safetensors
-
 # Data
-data/raw/*
-data/processed/*
-data/external/*
+data/raw/
+data/processed/
+data/external/
+
+# Machine Learning
+models/*.pkl
+models/*.joblib
+models/*.pt
+models/*.pth
+models/*.bin
+models/*.safetensors
 
 # Database
 *.db
