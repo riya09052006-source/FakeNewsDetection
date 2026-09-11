@@ -47,3 +47,8 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Phase 5
+data/processed/features/
+data/processed/evaluation/
+models/baseline/
