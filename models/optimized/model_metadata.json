@@ -1,0 +1,20 @@
+{
+    "model": "LinearSVC",
+    "C": 0.25,
+    "class_weight": "balanced",
+    "max_iter": 5000,
+    "random_state": 42,
+    "cv_folds": 3,
+    "cv_accuracy": 1.0,
+    "cv_precision": 1.0,
+    "cv_recall": 1.0,
+    "cv_f1": 1.0,
+    "training_time_seconds": 0.4470691680908203,
+    "feature_type": "Word TF-IDF + Character TF-IDF",
+    "application": "Fake News Detection Using Machine Learning",
+    "prediction_labels": {
+        "0": "FAKE",
+        "1": "REAL"
+    },
+    "warning": "Predictions indicate model classification patterns and should not be treated as independent verification of factual truth."
+}
