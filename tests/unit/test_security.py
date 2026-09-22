@@ -6,43 +6,46 @@ from backend.app.core.security import (
 
 def test_null_character_removed():
 
-    text = "Hello\x00World"
-
     result = sanitize_text(
-        text
+        "Hello\x00World"
     )
 
     assert "\x00" not in result
 
 
-def test_whitespace_normalized():
-
-    text = "Hello     World"
+def test_control_characters_removed():
 
     result = sanitize_text(
-        text
+        "Hello\x01World"
+    )
+
+    assert "\x01" not in result
+
+
+def test_whitespace_normalized():
+
+    result = sanitize_text(
+        "Hello     World"
     )
 
     assert result == "Hello World"
 
 
-def test_valid_text_length():
+def test_valid_length():
 
-    text = "A" * 50
+    result = validate_text_length(
+        "A" * 50
+    )
 
-    assert validate_text_length(
-        text
-    ) is True
+    assert result is True
 
 
-def test_short_text_rejected():
-
-    text = "Too short"
+def test_short_text():
 
     try:
 
         validate_text_length(
-            text,
+            "Short",
             minimum=20,
         )
 
@@ -53,14 +56,12 @@ def test_short_text_rejected():
         assert True
 
 
-def test_long_text_rejected():
-
-    text = "A" * 101
+def test_long_text():
 
     try:
 
         validate_text_length(
-            text,
+            "A" * 101,
             maximum=100,
         )
 
