@@ -1,6 +1,7 @@
 import json
 import logging
 from pathlib import Path
+import uuid
 
 from fastapi import (
     APIRouter,
@@ -8,6 +9,10 @@ from fastapi import (
     Request,
 )
 
+from backend.app.schemas.explanation import (
+    ExplanationRequest,
+    ExplanationResponse,
+)
 from backend.app.schemas.prediction import (
     BatchPredictionRequest,
     BatchPredictionResponse,
@@ -16,9 +21,8 @@ from backend.app.schemas.prediction import (
     PredictionRequest,
     PredictionResponse,
 )
-
 from backend.app.services.prediction_service import (
-    PredictionService,
+    prediction_service,
 )
 
 
@@ -27,8 +31,6 @@ logger = logging.getLogger(
 )
 
 router = APIRouter()
-
-prediction_service = PredictionService()
 
 
 # ============================================================
@@ -249,3 +251,48 @@ def predict_batch(
             status_code=500,
             detail="Batch prediction failed.",
         ) from error
+
+
+# ============================================================
+# EXPLANATION (XAI)
+# ============================================================
+
+@router.post(
+    "/explain",
+    response_model=ExplanationResponse,
+)
+def explain_news(
+    request: ExplanationRequest,
+):
+
+    request_id = str(uuid.uuid4())
+
+    try:
+
+        result = prediction_service.explain(
+            request.text
+        )
+
+        return {
+            **result,
+            "request_id": request_id,
+        }
+
+    except ValueError as exc:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Explanation failed. request_id=%s",
+            request_id,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to generate explanation.",
+        )

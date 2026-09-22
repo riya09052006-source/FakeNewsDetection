@@ -16,6 +16,7 @@ import {
 
 import {
   checkBackend,
+  explainNews,
   getModelInfo,
   predictNews,
 } from "./services/api";
@@ -64,6 +65,12 @@ function App() {
 
   const [modelInfo, setModelInfo] =
     useState(null);
+
+  const [explanation, setExplanation] =
+    useState(null);
+
+  const [explainLoading, setExplainLoading] =
+    useState(false);
 
 
   async function refreshSystemStatus() {
@@ -125,6 +132,7 @@ function App() {
 
     setError("");
     setResult(null);
+    setExplanation(null);
 
     const text =
       newsText.trim();
@@ -187,11 +195,49 @@ function App() {
   }
 
 
+  const handleExplain = async () => {
+
+    if (!newsText.trim()) {
+      return;
+    }
+
+    if (newsText.trim().length < 20) {
+      return;
+    }
+
+    try {
+
+      setExplainLoading(true);
+
+      const explanationResult =
+        await explainNews(newsText);
+
+      setExplanation(explanationResult);
+
+    } catch (err) {
+
+      console.error(
+        "Explanation error:",
+        err
+      );
+
+      setError(
+        "Unable to generate the model explanation."
+      );
+
+    } finally {
+
+      setExplainLoading(false);
+    }
+  };
+
+
   function handleClear() {
 
     setNewsText("");
     setResult(null);
     setError("");
+    setExplanation(null);
   }
 
 
@@ -747,6 +793,183 @@ function App() {
               )}
 
             </div>
+
+
+            {/* EXPLAIN BUTTON */}
+
+            <div className="mt-6">
+
+              <button
+                onClick={handleExplain}
+                disabled={explainLoading}
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+
+                {explainLoading
+                  ? "Generating explanation..."
+                  : "Why did the model decide this?"}
+
+              </button>
+
+            </div>
+
+
+            {/* EXPLANATION RESULTS */}
+
+            {explanation && (
+
+              <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl">
+
+                <div className="mb-6">
+
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-400">
+                    Explainable AI
+                  </p>
+
+                  <h3 className="mt-2 text-2xl font-bold text-white">
+                    Why did the model decide this?
+                  </h3>
+
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
+                    These features influenced the machine-learning model's
+                    decision. They are not proof that the article is
+                    factually true or false.
+                  </p>
+
+                </div>
+
+
+                <div className="grid gap-6 md:grid-cols-2">
+
+                  {/* REAL SIGNALS */}
+
+                  <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5">
+
+                    <div className="mb-4">
+
+                      <h4 className="font-semibold text-emerald-300">
+                        Signals toward REAL
+                      </h4>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        Positive model contributions
+                      </p>
+
+                    </div>
+
+
+                    <div className="space-y-3">
+
+                      {explanation.top_real_features.length > 0 ? (
+
+                        explanation.top_real_features.map(
+                          (item, index) => (
+
+                            <div
+                              key={`${item.feature}-${index}`}
+                              className="flex items-center justify-between gap-4 rounded-xl bg-white/5 px-4 py-3"
+                            >
+
+                              <span className="break-all text-sm text-slate-200">
+                                {item.feature}
+                              </span>
+
+                              <span className="shrink-0 text-sm font-semibold text-emerald-400">
+                                +{item.contribution.toFixed(4)}
+                              </span>
+
+                            </div>
+
+                          )
+                        )
+
+                      ) : (
+
+                        <p className="text-sm text-slate-500">
+                          No strong positive signals were found.
+                        </p>
+
+                      )}
+
+                    </div>
+
+                  </div>
+
+
+                  {/* FAKE SIGNALS */}
+
+                  <div className="rounded-2xl border border-red-400/20 bg-red-400/5 p-5">
+
+                    <div className="mb-4">
+
+                      <h4 className="font-semibold text-red-300">
+                        Signals toward FAKE
+                      </h4>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        Negative model contributions
+                      </p>
+
+                    </div>
+
+
+                    <div className="space-y-3">
+
+                      {explanation.top_fake_features.length > 0 ? (
+
+                        explanation.top_fake_features.map(
+                          (item, index) => (
+
+                            <div
+                              key={`${item.feature}-${index}`}
+                              className="flex items-center justify-between gap-4 rounded-xl bg-white/5 px-4 py-3"
+                            >
+
+                              <span className="break-all text-sm text-slate-200">
+                                {item.feature}
+                              </span>
+
+                              <span className="shrink-0 text-sm font-semibold text-red-400">
+                                {item.contribution.toFixed(4)}
+                              </span>
+
+                            </div>
+
+                          )
+                        )
+
+                      ) : (
+
+                        <p className="text-sm text-slate-500">
+                          No strong negative signals were found.
+                        </p>
+
+                      )}
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+
+                <div className="mt-6 rounded-2xl border border-blue-400/10 bg-blue-400/5 p-4">
+
+                  <p className="text-xs leading-6 text-slate-400">
+
+                    <span className="font-semibold text-blue-300">
+                      Important:
+                    </span>{" "}
+
+                    {explanation.explanation_note}
+
+                  </p>
+
+                </div>
+
+              </section>
+
+            )}
 
           </section>
 

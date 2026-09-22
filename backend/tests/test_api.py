@@ -118,3 +118,28 @@ def test_batch_prediction():
     assert data["count"] == 2
 
     assert len(data["results"]) == 2
+
+
+def test_explain_endpoint():
+
+    response = client.post(
+        "/explain",
+        json={
+            "text": (
+                "A viral social media post claims that a secret "
+                "drink can instantly cure every known disease. "
+                "The post provides no scientific evidence."
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert "prediction" in data
+    assert "decision_score" in data
+    assert "top_real_features" in data
+    assert "top_fake_features" in data
+    assert "explanation_note" in data
+    assert "request_id" in data

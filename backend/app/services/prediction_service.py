@@ -1,40 +1,27 @@
-from pathlib import Path
-from typing import Any
-
+from ml.explainability.explainer import FakeNewsExplainer
 from ml.prediction.predictor import FakeNewsPredictor
 
 
 class PredictionService:
-    """
-    Application service responsible for ML predictions.
-
-    The predictor is loaded once and reused for all requests.
-    """
 
     def __init__(self):
+        self.predictor = FakeNewsPredictor()
+        self.explainer = FakeNewsExplainer()
 
-        self.predictor = FakeNewsPredictor(
-            base_dir=Path(__file__).resolve().parents[3]
-        )
+    def predict(self, text: str):
+        return self.predictor.predict(text)
 
-    def predict(
-        self,
-        text: str,
-    ) -> dict[str, Any]:
+    def predict_batch(self, texts):
+        return self.predictor.predict_batch(texts)
 
-        return self.predictor.predict(
-            text
-        )
-
-    def predict_batch(
-        self,
-        texts: list[str],
-    ) -> list[dict[str, Any]]:
-
-        return self.predictor.predict_batch(
-            texts
-        )
+    def explain(self, text: str):
+        return self.explainer.explain(text)
 
     def is_ready(self) -> bool:
+        return (
+            self.predictor.is_ready()
+            and self.explainer.is_ready()
+        )
 
-        return self.predictor.is_ready()
+
+prediction_service = PredictionService()
