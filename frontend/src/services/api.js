@@ -26,13 +26,19 @@ export async function predictNews(text) {
 }
 
 
-export async function getHealth() {
+export async function checkBackend() {
 
   const response = await api.get(
     "/health"
   );
 
   return response.data;
+}
+
+
+export async function getHealth() {
+
+  return checkBackend();
 }
 
 

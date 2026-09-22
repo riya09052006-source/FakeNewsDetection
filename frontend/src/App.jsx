@@ -15,11 +15,35 @@ import {
 } from "lucide-react";
 
 import {
-  getHealth,
+  checkBackend,
   getModelInfo,
   predictNews,
 } from "./services/api";
 
+const SAMPLE_ARTICLES = [
+  {
+    title: "Scientific Research",
+    text: `Researchers published a detailed scientific report after
+conducting multiple experiments. The researchers explained that
+additional independent studies are necessary to confirm the
+findings and understand their broader implications.`,
+  },
+
+  {
+    title: "Government Report",
+    text: `The national statistics agency released its latest economic
+report containing updated employment and inflation figures based
+on officially collected data and publicly documented methods.`,
+  },
+
+  {
+    title: "Viral Claim",
+    text: `A viral social media post claims that a secret drink can
+instantly cure every known disease. The post provides no
+scientific evidence, medical study, or credible source to
+support the claim.`,
+  },
+];
 
 function App() {
 
@@ -42,6 +66,28 @@ function App() {
     useState(null);
 
 
+  async function refreshSystemStatus() {
+
+    try {
+
+      const health =
+        await checkBackend();
+
+      setBackendStatus(
+        health.model_ready
+          ? "online"
+          : "degraded"
+      );
+
+    } catch {
+
+      setBackendStatus(
+        "offline"
+      );
+    }
+  }
+
+
   useEffect(() => {
 
     async function loadSystemInfo() {
@@ -49,7 +95,7 @@ function App() {
       try {
 
         const health =
-          await getHealth();
+          await checkBackend();
 
         const info =
           await getModelInfo();
@@ -86,7 +132,7 @@ function App() {
     if (!text) {
 
       setError(
-        "Please enter a news article."
+        "Please enter a news article before analyzing."
       );
 
       return;
@@ -96,6 +142,15 @@ function App() {
 
       setError(
         "Please enter at least 20 characters."
+      );
+
+      return;
+    }
+
+    if (text.length > 100000) {
+
+      setError(
+        "The article is too long. Maximum length is 100,000 characters."
       );
 
       return;
@@ -112,20 +167,18 @@ function App() {
 
     } catch (err) {
 
-      if (
-        err.response?.data?.detail
-      ) {
+      console.error(
+        "Prediction error:",
+        err
+      );
 
-        setError(
-          err.response.data.detail
-        );
+      const detail =
+        err.response?.data?.detail;
 
-      } else {
-
-        setError(
-          "Unable to connect to the prediction server."
-        );
-      }
+      setError(
+        detail ||
+        "The prediction service is currently unavailable. Please check that the backend is running."
+      );
 
     } finally {
 
@@ -142,8 +195,47 @@ function App() {
   }
 
 
+  function handleTextareaKeyDown(event) {
+
+    if (
+      event.ctrlKey &&
+      event.key === "Enter"
+    ) {
+
+      event.preventDefault();
+
+      handleAnalyze();
+    }
+  }
+
+
+  function getScoreDirection(score) {
+
+    if (score > 0) {
+
+      return {
+        text: "Model leans toward REAL",
+        className: "text-emerald-400",
+      };
+
+    }
+
+    return {
+      text: "Model leans toward FAKE",
+      className: "text-red-400",
+    };
+  }
+
+
   const isReal =
     result?.prediction === "REAL";
+
+  const scoreDirection =
+    result
+      ? getScoreDirection(
+          result.decision_score
+        )
+      : null;
 
 
   return (
@@ -212,7 +304,7 @@ function App() {
 
       {/* HERO */}
 
-      <main className="mx-auto max-w-7xl px-6 py-16">
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16">
 
         <section className="mx-auto max-w-4xl text-center">
 
@@ -283,11 +375,60 @@ function App() {
               </div>
 
 
-              <span className="text-xs text-gray-500">
+              <div className="text-right">
 
-                {newsText.length.toLocaleString()} chars
+                <p
+                  className={`text-xs ${
+                    newsText.length > 90000
+                      ? "text-yellow-400"
+                      : "text-gray-500"
+                  }`}
+                >
 
-              </span>
+                  {newsText.length.toLocaleString()} / 100,000
+
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* SAMPLE ARTICLES */}
+
+            <div className="mb-4">
+
+              <div className="mb-2 flex items-center justify-between">
+
+                <p className="text-xs font-medium text-gray-500">
+                  Quick examples
+                </p>
+
+                <p className="text-xs text-gray-600">
+                  Try a sample
+                </p>
+
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+
+                {SAMPLE_ARTICLES.map(
+                  (article) => (
+
+                    <button
+                      key={article.title}
+                      onClick={() =>
+                        setNewsText(article.text)
+                      }
+                      className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-gray-400 transition hover:border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-300"
+                    >
+                      {article.title}
+                    </button>
+
+                  )
+                )}
+
+              </div>
 
             </div>
 
@@ -299,11 +440,29 @@ function App() {
                   event.target.value
                 )
               }
-              placeholder="Paste a news article here..."
+              onKeyDown={handleTextareaKeyDown}
+              placeholder="Paste a news article here... (Ctrl + Enter to analyze)"
               maxLength={100000}
               rows={10}
               className="w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-5 text-sm leading-7 text-gray-200 outline-none transition placeholder:text-gray-600 focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/10"
             />
+
+
+            {/* MINIMUM TEXT PROGRESS INDICATOR */}
+
+            <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/5">
+
+              <div
+                className="h-full rounded-full bg-blue-400 transition-all"
+                style={{
+                  width: `${Math.min(
+                    (newsText.length / 500) * 100,
+                    100
+                  )}%`,
+                }}
+              />
+
+            </div>
 
 
             {error && (
@@ -340,7 +499,7 @@ function App() {
                       className="animate-spin"
                     />
 
-                    Analyzing...
+                    Analyzing article...
 
                   </>
 
@@ -367,6 +526,18 @@ function App() {
               </button>
 
             </div>
+
+
+            {loading && (
+
+              <p className="mt-3 text-center text-xs text-gray-600">
+
+                Running local TF-IDF feature extraction
+                and SVM inference...
+
+              </p>
+
+            )}
 
           </div>
 
@@ -450,11 +621,13 @@ function App() {
                   </p>
 
                   <p className="mt-1 font-mono text-lg">
+                    {result.decision_score.toFixed(4)}
+                  </p>
 
-                    {result.decision_score.toFixed(
-                      4
-                    )}
-
+                  <p
+                    className={`mt-1 text-xs ${scoreDirection.className}`}
+                  >
+                    {scoreDirection.text}
                   </p>
 
                 </div>
@@ -492,6 +665,55 @@ function App() {
               </div>
 
 
+              {/* MODEL TRANSPARENCY */}
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+
+                <div className="rounded-2xl border border-white/5 bg-black/20 p-4">
+
+                  <p className="text-xs text-gray-500">
+                    Class
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold">
+                    {result.label_id === 1
+                      ? "REAL (1)"
+                      : "FAKE (0)"}
+                  </p>
+
+                </div>
+
+
+                <div className="rounded-2xl border border-white/5 bg-black/20 p-4">
+
+                  <p className="text-xs text-gray-500">
+                    Algorithm
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold">
+                    Linear SVM
+                  </p>
+
+                </div>
+
+
+                <div className="rounded-2xl border border-white/5 bg-black/20 p-4">
+
+                  <p className="text-xs text-gray-500">
+                    Processing
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold">
+                    Local
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              {/* WARNING */}
+
               <div className="mt-5 flex items-start gap-3 rounded-2xl border border-yellow-400/10 bg-yellow-400/5 p-4 text-xs leading-6 text-gray-400">
 
                 <AlertCircle
@@ -510,6 +732,19 @@ function App() {
                 </p>
 
               </div>
+
+
+              {/* REQUEST ID */}
+
+              {result.request_id && (
+
+                <p className="mt-4 text-right font-mono text-[10px] text-gray-700">
+
+                  Request ID: {result.request_id}
+
+                </p>
+
+              )}
 
             </div>
 
@@ -579,18 +814,126 @@ function App() {
         </section>
 
 
+        {/* HOW IT WORKS */}
+
+        <section className="mx-auto mt-16 max-w-4xl">
+
+          <div className="mb-6 text-center">
+
+            <p className="text-sm font-semibold text-blue-400">
+              HOW IT WORKS
+            </p>
+
+            <h3 className="mt-2 text-2xl font-bold">
+              From article to prediction
+            </h3>
+
+          </div>
+
+
+          <div className="grid gap-4 sm:grid-cols-3">
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-400/10 text-blue-400">
+
+                01
+
+              </div>
+
+              <h4 className="font-semibold">
+                Text Processing
+              </h4>
+
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+
+                The article is normalized and cleaned
+                before feature extraction.
+
+              </p>
+
+            </div>
+
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-purple-400/10 text-purple-400">
+
+                02
+
+              </div>
+
+              <h4 className="font-semibold">
+                Feature Extraction
+              </h4>
+
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+
+                Word and character TF-IDF features
+                represent the article for the model.
+
+              </p>
+
+            </div>
+
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+
+                03
+
+              </div>
+
+              <h4 className="font-semibold">
+                ML Classification
+              </h4>
+
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+
+                The optimized Linear SVM produces
+                the final model classification.
+
+              </p>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
         {/* FOOTER */}
 
-        <footer className="mx-auto mt-16 max-w-4xl border-t border-white/10 py-8 text-center">
+        <footer className="mx-auto mt-20 max-w-4xl border-t border-white/10 py-8 text-center">
 
-          <p className="text-xs leading-6 text-gray-600">
+          <div className="flex items-center justify-center gap-2">
 
-            FakeGuard AI · Fake News Detection
-            Using Machine Learning
+            <ShieldCheck
+              size={16}
+              className="text-blue-400"
+            />
+
+            <span className="text-sm font-semibold text-gray-400">
+              FakeGuard AI
+            </span>
+
+          </div>
+
+          <p className="mt-2 text-xs leading-6 text-gray-600">
+
+            Fake News Detection Using Machine Learning
 
             <br />
 
-            Built for academic and research use.
+            Optimized Linear SVM · Word + Character TF-IDF
+
+          </p>
+
+          <p className="mt-3 text-[10px] text-gray-700">
+
+            Academic project · Model predictions are not
+            independent fact verification.
 
           </p>
 
