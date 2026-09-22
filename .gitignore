@@ -48,9 +48,10 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Phase 5 & 6
+# Phase 5, 6 & 7
 data/processed/features/
 data/processed/evaluation/
 models/baseline/
 models/optimized/
+models/transformer/
 
