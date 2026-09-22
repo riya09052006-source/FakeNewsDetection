@@ -12,6 +12,16 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
+from backend.app.core.cache import (
+    prediction_cache,
+)
+from backend.app.core.hashing import (
+    create_text_hash,
+)
+from backend.app.core.security import (
+    sanitize_text,
+    validate_text_length,
+)
 from backend.app.database.database import get_db
 from backend.app.schemas.explanation import (
     ExplanationRequest,
@@ -174,20 +184,60 @@ def predict(
         request.state,
         "request_id",
         None,
-    )
+    ) or str(uuid.uuid4())
 
     try:
 
-        result = prediction_service.predict(
+        clean_request_text = sanitize_text(
             payload.text
+        )
+
+        validate_text_length(
+            clean_request_text
+        )
+
+        cache_key = create_text_hash(
+            clean_request_text
+        )
+
+        cached_result = prediction_cache.get(
+            cache_key
+        )
+
+        if cached_result is not None:
+
+            save_prediction(
+                db=db,
+                result=cached_result,
+                text=clean_request_text,
+            )
+
+            logger.info(
+                "Prediction retrieved from cache | request_id=%s | prediction=%s",
+                request_id,
+                cached_result["prediction"],
+            )
+
+            return {
+                **cached_result,
+                "request_id": request_id,
+            }
+
+        result = prediction_service.predict(
+            clean_request_text
         )
 
         result["request_id"] = request_id
 
+        prediction_cache.set(
+            cache_key,
+            result,
+        )
+
         save_prediction(
             db=db,
             result=result,
-            text=payload.text,
+            text=clean_request_text,
         )
 
         logger.info(
@@ -244,12 +294,17 @@ def predict_batch(
         request.state,
         "request_id",
         None,
-    )
+    ) or str(uuid.uuid4())
 
     try:
 
+        cleaned_texts = [
+            sanitize_text(text)
+            for text in payload.texts
+        ]
+
         results = prediction_service.predict_batch(
-            payload.texts
+            cleaned_texts
         )
 
         logger.info(
@@ -293,8 +348,16 @@ def explain_news(
 
     try:
 
-        result = prediction_service.explain(
+        clean_request_text = sanitize_text(
             request.text
+        )
+
+        validate_text_length(
+            clean_request_text
+        )
+
+        result = prediction_service.explain(
+            clean_request_text
         )
 
         return {
@@ -302,7 +365,10 @@ def explain_news(
             "request_id": request_id,
         }
 
-    except ValueError as exc:
+    except (
+        TypeError,
+        ValueError,
+    ) as exc:
 
         raise HTTPException(
             status_code=400,

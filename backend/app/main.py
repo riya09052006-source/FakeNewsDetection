@@ -14,6 +14,9 @@ from backend.app.database.init_db import (
 from backend.app.middleware.request_id import (
     RequestIDMiddleware,
 )
+from backend.app.middleware.security_headers import (
+    SecurityHeadersMiddleware,
+)
 
 
 # ============================================================
@@ -35,8 +38,17 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
     description=settings.DESCRIPTION,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.ENABLE_DOCS else None,
+    redoc_url="/redoc" if settings.ENABLE_DOCS else None,
+)
+
+
+# ============================================================
+# SECURITY HEADERS
+# ============================================================
+
+app.add_middleware(
+    SecurityHeadersMiddleware
 )
 
 

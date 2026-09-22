@@ -1,25 +1,19 @@
-from typing import List, Optional
+from typing import List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 
 
 class PredictionRequest(BaseModel):
-    """
-    Request body for a single prediction.
-    """
 
     text: str = Field(
         ...,
         min_length=20,
         max_length=100_000,
-        description="News article text",
     )
 
 
 class PredictionResponse(BaseModel):
-    """
-    Response returned by the prediction endpoint.
-    """
 
     prediction: str
 
@@ -31,7 +25,7 @@ class PredictionResponse(BaseModel):
 
     feature_type: str
 
-    request_id: Optional[str] = None
+    request_id: str
 
 
 class BatchPredictionRequest(BaseModel):
@@ -40,17 +34,16 @@ class BatchPredictionRequest(BaseModel):
         ...,
         min_length=1,
         max_length=20,
-        description="List of news articles",
     )
 
 
 class BatchPredictionResponse(BaseModel):
 
-    results: List[dict]
+    results: list
 
     count: int
 
-    request_id: Optional[str] = None
+    request_id: str
 
 
 class HealthResponse(BaseModel):

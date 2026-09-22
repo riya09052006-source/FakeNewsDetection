@@ -2,9 +2,6 @@ from pathlib import Path
 
 
 class Settings:
-    """
-    Application configuration.
-    """
 
     APP_NAME = "Fake News Detection API"
 
@@ -17,9 +14,9 @@ class Settings:
     BASE_DIR = Path(__file__).resolve().parents[3]
 
     MODEL_DIR = (
-        BASE_DIR /
-        "models" /
-        "optimized"
+        BASE_DIR
+        / "models"
+        / "optimized"
     )
 
     ALLOWED_ORIGINS = [
@@ -32,6 +29,14 @@ class Settings:
     MAX_TEXT_LENGTH = 100_000
 
     MAX_BATCH_SIZE = 20
+
+    MIN_TEXT_LENGTH = 20
+
+    HISTORY_LIMIT = 50
+
+    REQUEST_TIMEOUT_SECONDS = 30
+
+    ENABLE_DOCS = True
 
 
 settings = Settings()
