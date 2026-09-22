@@ -143,3 +143,48 @@ def test_explain_endpoint():
     assert "top_fake_features" in data
     assert "explanation_note" in data
     assert "request_id" in data
+
+
+def test_history_and_analytics_flow():
+
+    # 1. Clean history to start with a known baseline
+    client.delete("/history")
+
+    # 2. Check analytics is empty
+    analytics_before = client.get("/analytics").json()
+    assert analytics_before["total"] == 0
+
+    # 3. Post a prediction
+    pred_res = client.post(
+        "/predict",
+        json={
+            "text": (
+                "Researchers published a detailed scientific "
+                "report after conducting multiple experiments."
+            )
+        },
+    )
+    assert pred_res.status_code == 200
+
+    # 4. Check history contains 1 item
+    hist_res = client.get("/history")
+    assert hist_res.status_code == 200
+    hist_data = hist_res.json()
+    assert hist_data["count"] >= 1
+    first_id = hist_data["items"][0]["id"]
+
+    # 5. Check detail endpoint
+    detail_res = client.get(f"/history/{first_id}")
+    assert detail_res.status_code == 200
+    detail_data = detail_res.json()
+    assert detail_data["id"] == first_id
+    assert "text" in detail_data
+
+    # 6. Check analytics updated
+    analytics_after = client.get("/analytics").json()
+    assert analytics_after["total"] >= 1
+
+    # 7. Clear history
+    clear_res = client.delete("/history")
+    assert clear_res.status_code == 200
+    assert clear_res.json()["deleted_count"] >= 1

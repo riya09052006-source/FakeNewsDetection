@@ -34,4 +34,24 @@ export async function getModelInfo() {
   return response.data;
 }
 
+export async function getPredictionHistory() {
+  const response = await api.get("/history");
+  return response.data;
+}
+
+export async function getAnalytics() {
+  const response = await api.get("/analytics");
+  return response.data;
+}
+
+export async function deletePredictionHistory() {
+  const response = await api.delete("/history");
+  return response.data;
+}
+
+export async function getPredictionDetail(id) {
+  const response = await api.get(`/history/${id}`);
+  return response.data;
+}
+
 export default api;

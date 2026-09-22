@@ -8,6 +8,9 @@ from backend.app.core.config import settings
 from backend.app.core.logging_config import (
     configure_logging,
 )
+from backend.app.database.init_db import (
+    initialize_database,
+)
 from backend.app.middleware.request_id import (
     RequestIDMiddleware,
 )
@@ -48,6 +51,7 @@ app.add_middleware(
     allow_methods=[
         "GET",
         "POST",
+        "DELETE",
     ],
     allow_headers=["*"],
 )
@@ -77,6 +81,8 @@ app.include_router(
 
 @app.on_event("startup")
 async def startup_event():
+
+    initialize_database()
 
     logger.info(
         "%s starting...",

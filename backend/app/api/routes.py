@@ -1,17 +1,27 @@
 import json
 import logging
 from pathlib import Path
+from typing import List
 import uuid
 
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     Request,
 )
+from sqlalchemy.orm import Session
 
+from backend.app.database.database import get_db
 from backend.app.schemas.explanation import (
     ExplanationRequest,
     ExplanationResponse,
+)
+from backend.app.schemas.history import (
+    AnalyticsResponse,
+    ClearHistoryResponse,
+    PredictionHistoryDetail,
+    PredictionHistoryResponse,
 )
 from backend.app.schemas.prediction import (
     BatchPredictionRequest,
@@ -20,6 +30,13 @@ from backend.app.schemas.prediction import (
     ModelInfoResponse,
     PredictionRequest,
     PredictionResponse,
+)
+from backend.app.services.history_service import (
+    delete_all_predictions,
+    get_analytics,
+    get_prediction,
+    get_predictions,
+    save_prediction,
 )
 from backend.app.services.prediction_service import (
     prediction_service,
@@ -150,6 +167,7 @@ def model_info():
 def predict(
     payload: PredictionRequest,
     request: Request,
+    db: Session = Depends(get_db),
 ):
 
     request_id = getattr(
@@ -166,8 +184,14 @@ def predict(
 
         result["request_id"] = request_id
 
+        save_prediction(
+            db=db,
+            result=result,
+            text=payload.text,
+        )
+
         logger.info(
-            "Prediction completed | request_id=%s | prediction=%s",
+            "Prediction completed and saved | request_id=%s | prediction=%s",
             request_id,
             result["prediction"],
         )
@@ -296,3 +320,103 @@ def explain_news(
             status_code=500,
             detail="Unable to generate explanation.",
         )
+
+
+# ============================================================
+# PREDICTION HISTORY & ANALYTICS
+# ============================================================
+
+@router.get(
+    "/history",
+    response_model=PredictionHistoryResponse,
+)
+def prediction_history(
+    db: Session = Depends(get_db),
+):
+
+    records = get_predictions(
+        db=db,
+        limit=50,
+    )
+
+    items = [
+        {
+            "id": record.id,
+            "prediction": record.prediction,
+            "label_id": record.label_id,
+            "decision_score": record.decision_score,
+            "model": record.model,
+            "feature_type": record.feature_type,
+            "created_at": record.created_at,
+        }
+        for record in records
+    ]
+
+    return {
+        "count": len(items),
+        "items": items,
+    }
+
+
+@router.get(
+    "/history/{prediction_id}",
+    response_model=PredictionHistoryDetail,
+)
+def prediction_history_detail(
+    prediction_id: int,
+    db: Session = Depends(get_db),
+):
+
+    record = get_prediction(
+        db=db,
+        prediction_id=prediction_id,
+    )
+
+    if record is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction not found.",
+        )
+
+    return {
+        "id": record.id,
+        "text": record.text,
+        "prediction": record.prediction,
+        "label_id": record.label_id,
+        "decision_score": record.decision_score,
+        "model": record.model,
+        "feature_type": record.feature_type,
+        "created_at": record.created_at,
+    }
+
+
+@router.get(
+    "/analytics",
+    response_model=AnalyticsResponse,
+)
+def prediction_analytics(
+    db: Session = Depends(get_db),
+):
+
+    return get_analytics(db)
+
+
+@router.delete(
+    "/history",
+    response_model=ClearHistoryResponse,
+)
+def clear_prediction_history(
+    db: Session = Depends(get_db),
+):
+
+    deleted_count = delete_all_predictions(
+        db=db
+    )
+
+    return {
+        "deleted_count": deleted_count,
+        "message": (
+            "Prediction history cleared successfully."
+        ),
+    }

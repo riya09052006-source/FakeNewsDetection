@@ -5,19 +5,26 @@ import {
 
 import {
   AlertCircle,
+  BarChart3,
   CheckCircle2,
   Cpu,
   FileText,
+  History,
   Loader2,
+  RefreshCw,
   ShieldCheck,
   Sparkles,
+  Trash2,
   XCircle,
 } from "lucide-react";
 
 import {
   checkBackend,
+  deletePredictionHistory,
   explainNews,
+  getAnalytics,
   getModelInfo,
+  getPredictionHistory,
   predictNews,
 } from "./services/api";
 
@@ -72,6 +79,15 @@ function App() {
   const [explainLoading, setExplainLoading] =
     useState(false);
 
+  const [history, setHistory] =
+    useState([]);
+
+  const [analytics, setAnalytics] =
+    useState(null);
+
+  const [historyLoading, setHistoryLoading] =
+    useState(false);
+
 
   async function refreshSystemStatus() {
 
@@ -93,6 +109,35 @@ function App() {
       );
     }
   }
+
+
+  const loadAnalytics = async () => {
+
+    try {
+
+      setHistoryLoading(true);
+
+      const [historyData, analyticsData] =
+        await Promise.all([
+          getPredictionHistory(),
+          getAnalytics(),
+        ]);
+
+      setHistory(historyData.items || []);
+      setAnalytics(analyticsData);
+
+    } catch (err) {
+
+      console.error(
+        "Failed to load analytics:",
+        err
+      );
+
+    } finally {
+
+      setHistoryLoading(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -124,6 +169,7 @@ function App() {
     }
 
     loadSystemInfo();
+    loadAnalytics();
 
   }, []);
 
@@ -172,6 +218,8 @@ function App() {
         await predictNews(text);
 
       setResult(data);
+
+      await loadAnalytics();
 
     } catch (err) {
 
@@ -239,6 +287,31 @@ function App() {
     setError("");
     setExplanation(null);
   }
+
+
+  const handleClearHistory = async () => {
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete all prediction history?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+
+      await deletePredictionHistory();
+      await loadAnalytics();
+
+    } catch (err) {
+
+      console.error(
+        "Failed to clear history:",
+        err
+      );
+    }
+  };
 
 
   function handleTextareaKeyDown(event) {
@@ -970,6 +1043,223 @@ function App() {
               </section>
 
             )}
+
+          </section>
+
+        )}
+
+
+        {/* ANALYTICS SECTION */}
+
+        {analytics && (
+
+          <section className="mx-auto mt-12 max-w-4xl">
+
+            <div className="mb-5">
+
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-400">
+                Analytics
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold text-white">
+                Prediction Overview
+              </h2>
+
+            </div>
+
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+
+                <p className="text-sm text-slate-400">
+                  Total Predictions
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-white">
+                  {analytics.total}
+                </p>
+
+              </div>
+
+
+              <div className="rounded-2xl border border-red-400/20 bg-red-400/5 p-5">
+
+                <p className="text-sm text-red-300">
+                  Fake Predictions
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-red-400">
+                  {analytics.fake_count}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {analytics.fake_percentage.toFixed(1)}%
+                </p>
+
+              </div>
+
+
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5">
+
+                <p className="text-sm text-emerald-300">
+                  Real Predictions
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-emerald-400">
+                  {analytics.real_count}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {analytics.real_percentage.toFixed(1)}%
+                </p>
+
+              </div>
+
+
+              <div className="rounded-2xl border border-blue-400/20 bg-blue-400/5 p-5">
+
+                <p className="text-sm text-blue-300">
+                  Model
+                </p>
+
+                <p className="mt-2 text-lg font-bold text-white">
+                  Linear SVM
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  TF-IDF based
+                </p>
+
+              </div>
+
+            </div>
+
+          </section>
+
+        )}
+
+
+        {/* RECENT PREDICTIONS HISTORY */}
+
+        {history.length > 0 && (
+
+          <section className="mx-auto mt-12 max-w-4xl">
+
+            <div className="mb-5 flex items-center justify-between">
+
+              <div>
+
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple-400">
+                  History
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold text-white">
+                  Recent Predictions
+                </h2>
+
+              </div>
+
+
+              <button
+                onClick={loadAnalytics}
+                disabled={historyLoading}
+                className="rounded-xl border border-white/10 bg-white/5 p-3 text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
+                title="Refresh history"
+              >
+
+                <RefreshCw
+                  size={18}
+                  className={historyLoading ? "animate-spin" : ""}
+                />
+
+              </button>
+
+            </div>
+
+
+            <div className="space-y-3">
+
+              {history.map((item) => (
+
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-5"
+                >
+
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+                    <div className="flex items-center gap-3">
+
+                      <div
+                        className={`rounded-xl p-2 ${
+                          item.prediction === "FAKE"
+                            ? "bg-red-400/10 text-red-400"
+                            : "bg-emerald-400/10 text-emerald-400"
+                        }`}
+                      >
+
+                        <History size={18} />
+
+                      </div>
+
+                      <div>
+
+                        <p
+                          className={`font-semibold ${
+                            item.prediction === "FAKE"
+                              ? "text-red-400"
+                              : "text-emerald-400"
+                          }`}
+                        >
+
+                          {item.prediction}
+
+                        </p>
+
+                        <p className="text-xs text-slate-500">
+                          Prediction #{item.id}
+                        </p>
+
+                      </div>
+
+                    </div>
+
+
+                    <div className="text-left sm:text-right">
+
+                      <p className="text-sm text-slate-300">
+                        Score:{" "}
+                        {item.decision_score.toFixed(4)}
+                      </p>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        {new Date(
+                          item.created_at
+                        ).toLocaleString()}
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+
+            <button
+              onClick={handleClearHistory}
+              className="mt-5 inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-2 text-sm font-semibold text-red-400 transition hover:bg-red-400/10"
+            >
+
+              <Trash2 size={16} />
+
+              Clear History
+
+            </button>
 
           </section>
 
